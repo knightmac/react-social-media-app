@@ -5,16 +5,18 @@ const app = require("express")();
 admin.initializeApp();
 
 const config = {
-  apiKey: "AIzaSyAvf3qu9PD00deuxef2XAQ53lCZJT4jz4M",
-  authDomain: "social-app-f16c1.firebaseapp.com",
-  databaseURL: "https://social-app-f16c1.firebaseio.com",
-  projectId: "social-app-f16c1",
-  storageBucket: "social-app-f16c1.appspot.com",
-  messagingSenderId: "467615227162"
+  apiKey: process.env.REACT_APP_API_KEY,
+  authDomain: process.env.REACT_APP_AUTH_DOMAIN,
+  databaseURL: process.env.REACT_APP_DB_URL,
+  projectId: process.env.REACT_APP_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_STORAGEBUCKET,
+  messagingSenderId: process.env.REACT_APP_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_APP_ID,
+  measurementId: process.env.REACT_APP_MEASUREMENT_ID
 };
 
 const firebase = require("firebase");
-firebase.initializeApp();
+firebase.initializeApp(config);
 
 app.get("/screams", (req, res) => {
   admin
@@ -60,7 +62,6 @@ app.post("/scream", (req, res) => {
 // SignUp route
 app.post("/signup", (req, res) => {
   const newUser = {
-    // extract form data from body
     email: req.body.email,
     password: req.body.password,
     confirmPassword: req.body.confirmPassword,
@@ -74,7 +75,7 @@ app.post("/signup", (req, res) => {
     .then(data => {
       return res
         .status(201)
-        .json({ message: `user ${data.user.id} signed up successfully` });
+        .json({ message: `user ${data.user.uid} signed up successfully` });
     })
     .catch(err => {
       console.error(err);
