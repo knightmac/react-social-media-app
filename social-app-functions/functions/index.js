@@ -68,8 +68,7 @@ app.post("/signup", (req, res) => {
     confirmPassword: req.body.confirmPassword,
     handle: req.body.handle
   };
-  // TODO: validate data
-
+  let token, userId;
   // Check in collection "users", if the handle exists already
   db.doc(`/users/${newUser.handle}`)
     .get()
@@ -84,13 +83,25 @@ app.post("/signup", (req, res) => {
       }
     })
     .then(data => {
+      userId = data.user.uid;
       //access token
       return data.user.getIdToken();
     })
-    .then(token => {
+    .then(idToken => {
+      token = idToken;
+      const userCredentials = {
+        handle: newUser.handle,
+        email: newUser.email,
+        createdAt: new Date().toISOString(),
+        userId: userId
+      };
+      return db.doc(`/users/${newUser.handle}`).set(userCredentials);
+    })
+    .then(() => {
       //show access token
       return res.status(201).json({ token });
     })
+
     .catch(err => {
       console.error(err);
       if (err === "auth/email-already-in-use") {
