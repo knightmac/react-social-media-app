@@ -5,23 +5,24 @@ const app = require("express")();
 admin.initializeApp();
 
 const config = {
-  apiKey: process.env.REACT_APP_API_KEY,
-  authDomain: process.env.REACT_APP_AUTH_DOMAIN,
-  databaseURL: process.env.REACT_APP_DB_URL,
-  projectId: process.env.REACT_APP_PROJECT_ID,
-  storageBucket: process.env.REACT_APP_STORAGEBUCKET,
-  messagingSenderId: process.env.REACT_APP_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_APP_ID,
-  measurementId: process.env.REACT_APP_MEASUREMENT_ID
+  apiKey: REACT_APP_API_KEY,
+  authDomain: REACT_APP_AUTH_DOMAIN,
+  databaseURL: REACT_APP_DB_URL,
+  projectId: REACT_APP_PROJECT_ID,
+  storageBucket: REACT_APP_STORAGEBUCKET,
+  messagingSenderId: REACT_APP_MESSAGING_SENDER_ID,
+  appId: REACT_APP_APP_ID,
+  measurementId: REACT_APP_MEASUREMENT_ID
 };
 
 const firebase = require("firebase");
 firebase.initializeApp(config);
 
+const db = admin.firestore();
+
+//show all screams Route
 app.get("/screams", (req, res) => {
-  admin
-    .firestore()
-    .collection("screens")
+  db.collection("screens")
     .orderBy("createdAt", "desc")
     .get()
     .then(data => {
@@ -39,6 +40,7 @@ app.get("/screams", (req, res) => {
     .catch(err => console.log(err));
 });
 
+//create new scream Route
 app.post("/scream", (req, res) => {
   const newScream = {
     body: req.body.body,
@@ -46,9 +48,7 @@ app.post("/scream", (req, res) => {
     createdAt: new Date().toISOString()
   };
 
-  admin
-    .firestore()
-    .collection("screens")
+  db.collection("screens")
     .add(newScream)
     .then(doc => {
       res.json({ message: `document ${doc.id} created successfully` });
@@ -61,6 +61,7 @@ app.post("/scream", (req, res) => {
 
 // SignUp route
 app.post("/signup", (req, res) => {
+  //expects a JSON object with following data
   const newUser = {
     email: req.body.email,
     password: req.body.password,
@@ -69,17 +70,34 @@ app.post("/signup", (req, res) => {
   };
   // TODO: validate data
 
-  firebase
-    .auth()
-    .createUserWithEmailAndPassword(newUser.email, newUser.password)
+  // Check in collection "users", if the handle exists already
+  db.doc(`/users/${newUser.handle}`)
+    .get()
+    .then(doc => {
+      if (doc.exists) {
+        return res.status(400).json({ handle: "this handle is already taken" });
+      } else {
+        // create User
+        return firebase
+          .auth()
+          .createUserWithEmailAndPassword(newUser.email, newUser.password);
+      }
+    })
     .then(data => {
-      return res
-        .status(201)
-        .json({ message: `user ${data.user.uid} signed up successfully` });
+      //access token
+      return data.user.getIdToken();
+    })
+    .then(token => {
+      //show access token
+      return res.status(201).json({ token });
     })
     .catch(err => {
       console.error(err);
-      return res.status(500).json({ error: err.code + " I am here" });
+      if (err === "auth/email-already-in-use") {
+        return res.status(400).json({ email: "email is already in use" });
+      } else {
+        return res.status(500).json({ error: err.code });
+      }
     });
 });
 
