@@ -5,14 +5,14 @@ const app = require("express")();
 admin.initializeApp();
 
 const config = {
-  apiKey: REACT_APP_API_KEY,
-  authDomain: REACT_APP_AUTH_DOMAIN,
-  databaseURL: REACT_APP_DB_URL,
-  projectId: REACT_APP_PROJECT_ID,
-  storageBucket: REACT_APP_STORAGEBUCKET,
-  messagingSenderId: REACT_APP_MESSAGING_SENDER_ID,
-  appId: REACT_APP_APP_ID,
-  measurementId: REACT_APP_MEASUREMENT_ID
+  apiKey: "AIzaSyAvf3qu9PD00deuxef2XAQ53lCZJT4jz4M",
+  authDomain: "social-app-f16c1.firebaseapp.com",
+  databaseURL: "https://social-app-f16c1.firebaseio.com",
+  projectId: "social-app-f16c1",
+  storageBucket: "social-app-f16c1.appspot.com",
+  messagingSenderId: "467615227162",
+  appId: "1:467615227162:web:6ca3a4dbad621b0a0860a3",
+  measurementId: "G-GC0BEHLEXM"
 };
 
 const firebase = require("firebase");
@@ -40,11 +40,51 @@ app.get("/screams", (req, res) => {
     .catch(err => console.log(err));
 });
 
+// Authentication Function (Middleware)
+// Check, if a logged-in user posts scream
+const FBAuth = (req, res, next) => {
+  let idToken;
+  // Validation, if its a valid user in general
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer ")
+  ) {
+    idToken = req.headers.authorization.split("Bearer ")[1];
+  } else {
+    console.error("No token found");
+    return res.status(403).json({ error: "Unauthorized" });
+  }
+
+  // Validation, if its the right user
+  admin
+    .auth()
+    .verifyIdToken(idToken)
+    .then(decodedToken => {
+      req.user = decodedToken;
+      console.log(decodedToken);
+
+      // "handle" is stored in db collection, not in firebase authentication
+      return db
+        .collection("users")
+        .where("userId", "==", req.user.uid)
+        .limit(1)
+        .get();
+    })
+    .then(data => {
+      req.user.handle = data.docs[0].data().handle;
+      return next();
+    })
+    .catch(err => {
+      console.error("Error while verifying token", err);
+      return res.status(403).json({ err });
+    });
+};
+
 //create new scream Route
-app.post("/scream", (req, res) => {
+app.post("/scream", FBAuth, (req, res) => {
   const newScream = {
     body: req.body.body,
-    userHandle: req.body.userHandle,
+    userHandle: req.user.handle,
     createdAt: new Date().toISOString()
   };
 
